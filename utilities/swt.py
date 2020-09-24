@@ -73,24 +73,25 @@ def vertical_proj(img):
     #gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(img,(5,5),0)
     # adaptive threshold
-    ret,th5 = cv2.threshold(blur,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    ret,th5 = cv2.threshold(blur,0,255,cv2.THRESH_BINARY)
     height, width = img.shape[:2]
     
     sum_x = cv2.reduce(cv2.bitwise_not(img),1, cv2.REDUCE_SUM, dtype=cv2.CV_32S)
-    # plt.title('Vertical Projection')
-    # plt.plot(sum_x)
-    # plt.xlim([0, height])
-    # plt.show()
-    # plt.title('Skew Image')
-    # plt.imshow(img)
-    # plt.show()
+    #plt.title('Vertical Projection')
+    #plt.plot(sum_x)
+    #plt.xlim([0, height])
+    #plt.show()
+    #plt.title('Skew Image')
+    #plt.imshow(img)
+    #plt.show()
+
     img2 = img.copy()
     for i in range(sum_x.shape[0]):
-        if sum_x[i][0]>0:
+        if sum_x[i][0].any()>0:
             #img2=img2[i:,:]
             break
     for j in range(sum_x.shape[0]-1,0,-1):
-        if sum_x[j][0]>0:
+        if sum_x[j][0].any()>0:
             #img2=img2[:i,:]
             break
     
@@ -104,6 +105,9 @@ def horizontal_proj(img):
     # adaptive threshold
     
     height, width = img.shape[:2]
+    kernel = np.ones((5,5),np.uint8)
+    closing = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)
+    
     sum_x = cv2.reduce(cv2.bitwise_not(img),0, cv2.REDUCE_SUM, dtype=cv2.CV_32S)
 
     plt.title('Cropped Image')
@@ -369,6 +373,10 @@ def connected_components(swt: Image, threshold: float=3.) -> Tuple[Image, List[C
                 components.append(component)
     return labels, components
 
+def smooth(y, box_pts):
+    box = np.ones(box_pts)/box_pts
+    y_smooth = np.convolve(y, box, mode='same')
+    return y_smooth
 
 def minimum_area_bounding_box(points: np.ndarray) -> np.ndarray:
     """
@@ -450,9 +458,17 @@ def main(image):
 
     # Apply the Stroke Width Transformation.
     swt = apply_swt(im, edges, gradients)
+    
+        # adaptive threshold
+    
+        # erosion
+    
+
 
     # Apply Connected Components labelling
-    labels, components = connected_components(swt)  # TODO: Magic numbers hidden in arguments
+    labels, components = connected_components(swt) 
+    print(len(labels),len(components))
+     # TODO: Magic numbers hidden in arguments
 
     # Discard components that are likely not text
     # TODO: labels, components = discard_non_text(swt, labels, components)
@@ -460,8 +476,12 @@ def main(image):
     labels = labels.astype(np.float32) / labels.max()
     l = (labels*255.).astype(np.uint8)
 
+
     l = cv2.cvtColor(l, cv2.COLOR_GRAY2RGB)
+
     l = cv2.LUT(l, build_colormap())
+    
+   
     cv2.imwrite('comps.png', l)
     
 
